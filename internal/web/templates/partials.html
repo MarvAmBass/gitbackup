@@ -1,0 +1,29 @@
+{{define "eventrows"}}
+<div class="scroll"><table class="t">
+  <tbody>{{range .}}<tr class="ev-{{.Kind}}">
+    <td class="nw desc small">{{ago .TS}}</td>
+    <td class="nw">{{if .RepoID.Valid}}<a href="/repos/{{.RepoID.Int64}}">{{.RepoName}}</a>{{else}}{{.RepoName}}{{end}}</td>
+    <td class="nw"><span class="badge {{if historyKind .Kind}}b-warn{{else if eq .Kind "error"}}b-bad{{else if eq .Kind "back"}}b-ok{{else}}b-info{{end}}">{{.Kind}}</span></td>
+    <td>{{if .Ref}}<code>{{trimref .Ref}}</code> {{end}}{{if .Old}}<code>{{short .Old}}</code> → {{if .New}}<code>{{short .New}}</code>{{else}}<i class="desc">deleted upstream</i>{{end}} {{end}}{{if .Lost}}<b>{{.Lost}} commit(s) dropped upstream</b>, kept in <code>{{.Version}}</code> {{end}}{{if and .Preserved (not .Old)}}<span class="desc">kept: <code>{{.Preserved}}</code></span> {{end}}<span class="desc">{{.Detail}}</span></td>
+  </tr>{{else}}<tr><td class="empty">Nothing yet.</td></tr>{{end}}</tbody>
+</table></div>
+{{end}}
+
+{{define "repotable"}}
+<div class="scroll"><table class="t">
+  <thead><tr><th>repository</th><th>state</th><th class="hide-sm">plan</th><th class="num">30d</th><th>last change</th><th>next check</th><th class="num hide-sm">size</th></tr></thead>
+  <tbody>{{range .}}<tr>
+    <td><a href="/repos/{{.ID}}">{{.FullName}}</a>
+      {{if eq .Kind "fork"}}<span class="badge">fork</span>{{end}}{{if eq .Kind "gist"}}<span class="badge">gist</span>{{end}}
+      {{if .Versions}}<span class="badge b-warn" title="history rewritten upstream, old state preserved">{{.Versions}} version{{if gt .Versions 1}}s{{end}}</span>{{end}}
+      {{if .Archived}}<span class="badge">archived</span>{{end}}
+      {{if .Description}}<div class="desc small">{{.Description}}</div>{{end}}</td>
+    <td class="nw">{{if eq .State "gone"}}<span class="badge b-bad" title="kept in the backup">{{goneLabel .}}</span>{{if .GoneSince}}<div class="desc small">since {{date .GoneSince}}</div>{{end}}{{else}}<span class="badge {{if eq .State "ok"}}b-ok{{else if eq .State "error"}}b-bad{{end}}">{{.State}}</span>{{end}}{{if .Paused}} <span class="badge">paused</span>{{end}}</td>
+    <td class="nw hide-sm">{{.PlanName}} <span class="badge p{{.Priority}}">{{prio .Priority}}</span></td>
+    <td class="num">{{.Changes30d}}</td>
+    <td class="nw desc">{{ago .LastChange}}</td>
+    <td class="nw desc">{{if .Paused}}–{{else}}{{until .NextCheck}}{{end}}</td>
+    <td class="num desc hide-sm">{{if .SizeBytes}}{{bytes .SizeBytes}}{{end}}</td>
+  </tr>{{else}}<tr><td colspan="7" class="empty">No repositories.</td></tr>{{end}}</tbody>
+</table></div>
+{{end}}

@@ -1,0 +1,124 @@
+{{define "content"}}
+<h1>Settings</h1>
+<p class="desc" style="margin-top:-8px">Everything here is stored in <code>{{.ConfigPath}}</code>. You can also edit that file by hand: changes are picked up within seconds, and comments survive saves from this page.</p>
+
+<h2>Forge instances</h2>
+<p class="desc" style="margin-top:-4px">One entry per server, created automatically when you add a source. Tokens are optional but raise the limits (GitHub 60 → 5000/h);
+  sourcehut needs one for its API, GitLab snippets need the owner's token. A token can be written as <code>${ENV_VAR}</code> to read it from the environment.
+  The scheduler never spends the <b>reserve</b>; only buttons you press may.</p>
+{{range .C.Instances}}
+<form class="card" method="post" action="/instances" style="margin-bottom:12px">
+  <input type="hidden" name="host" value="{{.Host}}">
+  <div class="row">
+    <label>Instance <b style="color:var(--fg);font-size:14px">{{.Host}}</b></label>
+    <label>Platform
+      <select name="platform">{{$p := .Platform}}{{range $.Platforms}}<option value="{{.}}" {{if eq (print .) $p}}selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+    <label>Base URL <input type="text" name="base_url" value="{{.BaseURL}}" style="width:210px"></label>
+    <label>Token {{if .TokenFromEnv}}<span class="badge {{if .TokenValue}}b-ok{{else}}b-warn{{end}}">{{.Token}}{{if not .TokenValue}} (unset){{end}}</span>{{else if .Token}}<span class="badge b-ok">{{masked .Token}}</span>{{end}}
+      <input type="password" name="token" autocomplete="off" placeholder="{{if .Token}}keep{{else}}optional{{end}}" style="width:190px"></label>
+    <label>Reserve % <input class="short" type="number" name="reserve" value="{{.Reserve}}" min="0" max="90"></label>
+    <label>Gap <input class="short" type="text" name="gap" value="{{.Gap}}"></label>
+    {{if .Token}}<div class="checks"><label><input type="checkbox" name="clear_token"> remove token</label></div>{{end}}
+    <button>Save</button>
+    <span class="desc small">{{index $.Usage .Host}} source(s)</span>
+  </div>
+</form>
+{{end}}
+<form class="card" method="post" action="/instances" style="margin-bottom:24px">
+  <h2>Add a self-hosted instance</h2>
+  <div class="row">
+    <label>Base URL <input type="text" name="base_url" required placeholder="https://gitlab.company.lan" style="width:260px"></label>
+    <input type="hidden" name="host" value="">
+    <label>Platform
+      <select name="platform"><option value="auto">auto-detect</option>{{range .Platforms}}<option value="{{.}}">{{.Label}}</option>{{end}}</select></label>
+    <label>Token <input type="password" name="token" autocomplete="off" placeholder="optional" style="width:190px"></label>
+    <button class="primary">Add</button>
+  </div>
+  <p class="help">Only needed to set a token or a non-standard URL (sub-path, port) before adding sources – adding a source by URL creates the instance too.</p>
+</form>
+
+<h2>Hooks</h2>
+<p class="desc" style="margin-top:-4px">Run a shell command when something happens – send a message, trigger another backup, anything.
+  <b>Events</b>: event kinds (<code>rewritten</code>, <code>gone</code>, <code>asset-replaced</code>, <code>release-new</code>, …),
+  <code>history</code> for everything where upstream removed or rewrote something, or <code>*</code>.
+  The command gets <code>GB_EVENT</code>, <code>GB_REPO</code>, <code>GB_PATH</code>, <code>GB_REF</code>, <code>GB_VERSION</code>, <code>GB_DETAIL</code>, … and the event as JSON on stdin.</p>
+{{range .C.Hooks}}
+<form class="card" method="post" action="/hooks" style="margin-bottom:12px">
+  <div class="row">
+    <label>Name <input type="text" name="name" value="{{.Name}}" readonly style="width:120px"></label>
+    <label>Events <input type="text" name="events" value="{{range $i, $o := .Events}}{{if $i}}, {{end}}{{$o}}{{end}}" style="width:200px"></label>
+    <label style="flex:1">Run <input type="text" name="run" value="{{.Run}}" style="width:100%" class="mono"></label>
+    <label>Timeout <input class="short" type="text" name="timeout" value="{{if .Timeout}}{{.Timeout}}{{end}}" placeholder="1m"></label>
+    <button>Save</button>
+  </div>
+</form>
+<form method="post" action="/hooks/delete" style="margin:-6px 0 14px"><input type="hidden" name="name" value="{{.Name}}"><button class="sm danger">remove {{.Name}}</button></form>
+{{end}}
+<form class="card" method="post" action="/hooks" style="margin-bottom:24px">
+  <div class="row">
+    <label>Name <input type="text" name="name" required placeholder="notify" style="width:120px"></label>
+    <label>Events <input type="text" name="events" required value="history" style="width:200px"></label>
+    <label style="flex:1">Run <input type="text" name="run" required placeholder="/data/hooks/notify.sh" style="width:100%" class="mono"></label>
+    <label>Timeout <input class="short" type="text" name="timeout" placeholder="1m"></label>
+    <button class="primary">Add hook</button>
+  </div>
+</form>
+
+<form method="post" action="/settings/https" class="card" style="margin-bottom:16px">
+  {{$h := .C.Settings.HTTPS}}
+  <h2>HTTPS</h2>
+  <div class="row">
+    <label>Certificate
+      <select name="mode">
+        <option value="off" {{if eq $h.Mode "off"}}selected{{end}}>off (plain HTTP)</option>
+        <option value="self-signed" {{if eq $h.Mode "self-signed"}}selected{{end}}>self-signed (generated)</option>
+        <option value="files" {{if eq $h.Mode "files"}}selected{{end}}>my certificate files</option>
+        <option value="letsencrypt" {{if eq $h.Mode "letsencrypt"}}selected{{end}}>Let's Encrypt</option>
+      </select></label>
+    <label>HTTPS port <input class="short" type="text" name="port" value="{{$h.Port}}" placeholder="same"></label>
+    <div class="checks"><label><input type="checkbox" name="redirect_http" {{if $h.RedirectHTTP}}checked{{end}}> redirect HTTP to HTTPS</label></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label>Self-signed: names in the certificate <input type="text" name="hostnames" value="{{range $i, $n := $h.Hostnames}}{{if $i}}, {{end}}{{$n}}{{end}}" placeholder="gitbackup.lan, 192.0.2.10" style="width:280px"></label>
+    <label>Files: certificate <input type="text" name="cert_file" value="{{$h.CertFile}}" placeholder="/data/tls/fullchain.pem" style="width:200px"></label>
+    <label>key <input type="text" name="key_file" value="{{$h.KeyFile}}" placeholder="/data/tls/privkey.pem" style="width:180px"></label>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label>Let's Encrypt: public domains <input type="text" name="domains" value="{{range $i, $n := $h.Domains}}{{if $i}}, {{end}}{{$n}}{{end}}" placeholder="git.example.org" style="width:240px"></label>
+    <label>email <input type="text" name="email" value="{{$h.Email}}" placeholder="you@example.org" style="width:200px"></label>
+    <span class="spacer" style="flex:1"></span>
+    <button class="primary">Apply</button>
+  </div>
+  <p class="help"><b>Port:</b> empty = the same port serves HTTP and HTTPS (TLS is recognised per connection); or a separate port like <code>:8443</code> – then also publish it in docker-compose.
+    <b>Let's Encrypt</b> needs the domains to point here and the service reachable from the internet on port 443 (or 80) – e.g. via port forwarding. Applied live; if a certificate can't be loaded, plain HTTP keeps working.</p>
+  <dl class="kv small" style="margin-top:8px">
+    <dt>status</dt><dd>{{if .TLS.Error}}<span style="color:var(--bad)">{{.TLS.Error}}</span>{{else if .TLS.HTTPSAddr}}<span class="badge b-ok">HTTPS on {{.TLS.HTTPSAddr}}</span> HTTP on {{.TLS.HTTPAddr}}{{if $h.RedirectHTTP}} (redirects){{end}}{{else}}plain HTTP on {{.TLS.HTTPAddr}}{{end}}
+      {{if .Secure}} · this page came over HTTPS{{end}}</dd>
+    {{if .TLS.Subject}}<dt>certificate</dt><dd>{{.TLS.Subject}}{{if .TLS.Names}} · {{range $i, $n := .TLS.Names}}{{if $i}}, {{end}}{{$n}}{{end}}{{end}}{{if not .TLS.NotAfter.IsZero}} · valid until {{time .TLS.NotAfter}}{{end}}</dd>{{end}}
+    {{if .TLS.Fingerprint}}<dt>SHA-256</dt><dd class="mono small">{{.TLS.Fingerprint}}</dd>{{end}}
+  </dl>
+</form>
+
+<form method="post" action="/settings">
+<div class="card">
+  <h2>Workers &amp; HTML</h2>
+  <div class="row">
+    <label>Parallel git checks <input class="short" type="number" name="git_workers" value="{{.C.Settings.GitWorkers}}" min="1" max="32"></label>
+  </div>
+  <div class="checks" style="margin-top:12px">
+    <label><input type="checkbox" name="html" {{if .C.Settings.HTML}}checked{{end}}> history, file and commit pages</label>
+    {{if .StreagitUp}}<span class="badge b-ok">streagit running</span>{{else if .StreagitAvail}}<span class="badge b-warn">streagit starting / restarting</span>{{else}}<span class="badge b-bad">streagit binary not found</span>{{end}}
+  </div>
+  <p class="help">Pages are rendered on demand by streagit when somebody opens them. Everything lives in <code>{{.DataDir}}</code>, served at <a href="/browse/">/browse/</a>.</p>
+  <p><button class="primary">Save</button></p>
+</div>
+</form>
+<form method="post" action="/maintenance/retry-errors" class="card" style="margin-top:12px">
+  <button>Retry all repositories in error state</button>
+  <span class="help">e.g. after a host throttled git requests</span>
+</form>
+<form method="post" action="/maintenance/reset-pace" class="card" style="margin-top:12px">
+  <button>Reset learned git pace</button>
+  <span class="help">forget how slowly gitbackup thinks it must talk to each host – it slows down again on the next throttle</span>
+</form>
+{{end}}

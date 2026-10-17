@@ -1,0 +1,63 @@
+{{define "content"}}
+{{with .Stats}}
+<div class="grid g-stats" style="margin-bottom:16px">
+  <a class="card stat" href="/repos"><div class="n">{{.Repos}}</div><div class="l">repositories</div></a>
+  <a class="card stat ok" href="/repos?state=ok"><div class="n">{{.OK}}</div><div class="l">in sync</div></a>
+  <a class="card stat" href="/repos?state=new"><div class="n">{{.New}}</div><div class="l">not yet cloned</div></a>
+  <a class="card stat {{if .Rewritten}}warn{{end}}" href="/repos?state=rewritten"><div class="n">{{.Rewritten}}</div><div class="l">with preserved versions</div></a>
+  <a class="card stat {{if .Gone}}bad{{end}}" href="/repos?state=gone"><div class="n">{{.Gone}}</div><div class="l">no longer upstream (kept)</div></a>
+  <a class="card stat {{if .Errors}}bad{{end}}" href="/repos?state=error"><div class="n">{{.Errors}}</div><div class="l">errors</div></a>
+  <a class="card stat" href="/repos?sort=next"><div class="n">{{.Due}}</div><div class="l">due now</div></a>
+  <a class="card stat" href="/repos?sort=size"><div class="n">{{bytes .Bytes}}</div><div class="l">on disk</div></a>
+</div>
+{{end}}
+
+<div class="grid g2">
+  <div class="card">
+    <h2>API budgets</h2>
+    {{range .APIs}}
+      <div style="margin-bottom:12px">
+        <div class="small"><b>{{.Host}}</b>
+          {{if .Rate.Known}}– {{.Rate.Remaining}} / {{.Rate.Limit}} left, resets {{time .Rate.Reset}}
+            {{if .Rate.Authenticated}}<span class="badge b-ok">token</span>{{else}}<span class="badge b-warn">anonymous</span>{{end}}
+          {{else}}<span class="desc">– no quota info (yet)</span>{{end}}</div>
+        {{if .Rate.Known}}<div class="meter" title="striped: reserve kept for manual actions ({{.Reserve}})"><b style="left:0;width:{{pct .Reserve .Rate.Limit}}%"></b><i style="width:{{pct .Rate.Remaining .Rate.Limit}}%"></i></div>{{end}}
+        <div class="help" style="margin:0">{{.Counters.Requests}} request(s) · {{.Counters.NotModified}} from ETag cache · {{.Counters.Errors}} error(s)</div>
+      </div>
+    {{else}}<p class="desc">No API used yet.</p>{{end}}
+    <p class="help">Change checks use <code>git ls-remote</code> and cost no API quota.</p>
+  </div>
+  <div class="card">
+    <h2>Running now</h2>
+    {{if .Activity}}<ul class="plain mono">{{range .Activity}}<li>{{.}}</li>{{end}}</ul>{{else}}<p class="desc">Idle.</p>{{end}}
+    <h3>Up next</h3>
+    <ul class="plain">{{range .Next}}<li><a href="/repos/{{.ID}}">{{.FullName}}</a> <span class="desc small">{{until .NextCheck}}{{if .Paused}} · paused{{end}}</span></li>{{else}}<li class="desc">Nothing scheduled.</li>{{end}}</ul>
+  </div>
+</div>
+
+<div class="grid g2" style="margin-top:16px">
+  <div class="card flush">
+    <h2>Hot repositories <span class="desc small">priority, then changes in 30 days</span></h2>
+    <div class="scroll"><table class="t">
+      <thead><tr><th>repository</th><th>prio</th><th class="num">30d</th><th>changed</th><th>check every</th></tr></thead>
+      <tbody>{{range .Hot}}<tr>
+        <td><a href="/repos/{{.ID}}">{{.FullName}}</a>{{if .Versions}} <span class="badge b-warn">{{.Versions}}v</span>{{end}}</td>
+        <td><span class="badge p{{.Priority}}">{{prio .Priority}}</span></td>
+        <td class="num">{{.Changes30d}}</td>
+        <td class="nw desc">{{ago .LastChange}}</td>
+        <td class="nw desc">{{if .Interval}}{{dur .Interval}}{{else}}–{{end}}</td>
+      </tr>{{else}}<tr><td colspan="5" class="empty">No repositories yet. <a href="/sources">Add a source</a>.</td></tr>{{end}}</tbody>
+    </table></div>
+  </div>
+  <div class="card flush">
+    <h2>History changes preserved <a class="small" href="/events?kind=history">all →</a></h2>
+    {{template "eventrows" .History}}
+  </div>
+</div>
+
+<div class="card flush" style="margin-top:16px">
+  <h2>Recent events <a class="small" href="/events">all →</a></h2>
+  {{template "eventrows" .Recent}}
+</div>
+{{end}}
+

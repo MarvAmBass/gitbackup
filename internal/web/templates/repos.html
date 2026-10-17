@@ -1,0 +1,44 @@
+{{define "content"}}
+<h1>Repositories <span class="desc">({{.Total}})</span></h1>
+<form class="card" method="get" action="/repos" style="margin-bottom:16px">
+  <div class="row">
+    <label>Search <input type="search" name="q" value="{{.F.Query}}" placeholder="owner/name, description, url"></label>
+    <label>State
+      <select name="state">
+        {{$st := .F.State}}
+        <option value="" {{if eq $st ""}}selected{{end}}>all</option>
+        <option value="ok" {{if eq $st "ok"}}selected{{end}}>in sync</option>
+        <option value="new" {{if eq $st "new"}}selected{{end}}>not yet cloned</option>
+        <option value="rewritten" {{if eq $st "rewritten"}}selected{{end}}>with preserved versions</option>
+        <option value="gone" {{if eq $st "gone"}}selected{{end}}>no longer upstream</option>
+        <option value="error" {{if eq $st "error"}}selected{{end}}>error</option>
+        <option value="paused" {{if eq $st "paused"}}selected{{end}}>paused</option>
+      </select>
+    </label>
+    <label>Kind
+      <select name="kind">
+        <option value="" {{if eq .F.Kind ""}}selected{{end}}>all</option>
+        <option value="repo" {{if eq .F.Kind "repo"}}selected{{end}}>repos</option>
+        <option value="fork" {{if eq .F.Kind "fork"}}selected{{end}}>forks</option>
+        <option value="gist" {{if eq .F.Kind "gist"}}selected{{end}}>gists</option>
+      </select>
+    </label>
+    <label>Sort
+      <select name="sort">
+        <option value="name" {{if eq .F.Sort "name"}}selected{{end}}>name</option>
+        <option value="hot" {{if eq .F.Sort "hot"}}selected{{end}}>hot (priority + activity)</option>
+        <option value="next" {{if eq .F.Sort "next"}}selected{{end}}>next check</option>
+        <option value="changed" {{if eq .F.Sort "changed"}}selected{{end}}>last change</option>
+        <option value="versions" {{if eq .F.Sort "versions"}}selected{{end}}>preserved versions</option>
+        <option value="size" {{if eq .F.Sort "size"}}selected{{end}}>size</option>
+      </select>
+    </label>
+    <button class="primary">Filter</button>
+  </div>
+</form>
+<div class="card flush">{{template "repotable" .Repos}}</div>
+<div class="pager">
+  {{if gt .Page 0}}<a class="btn" href="?{{.QS}}&page={{add .Page -1}}">← prev</a>{{end}}
+  {{if .HasNext}}<a class="btn" href="?{{.QS}}&page={{add .Page 1}}">next →</a>{{end}}
+</div>
+{{end}}

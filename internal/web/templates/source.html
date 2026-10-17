@@ -1,0 +1,50 @@
+{{define "content"}}
+{{$s := .Source}}
+<div class="titlebar">
+  <h1>{{$s.Target}}</h1>
+  <span class="badge b-info">{{platformLabel $s.Platform}} · {{$s.Host}}</span>
+  <span class="badge">{{$s.Kind}}{{if $s.AccountType}} · {{$s.AccountType}}{{end}}</span>
+  <span class="spacer"></span>
+  <form class="inline" method="post" action="/sources/{{$s.ID}}/discover"><button>Discover now</button></form>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <h2>Settings</h2>
+    <form method="post" action="/sources/{{$s.ID}}">
+      <div class="row">
+        <label>Plan <select name="plan">{{range .Plans}}<option value="{{.Name}}" {{if eq .ID $s.PlanID}}selected{{end}}>{{.Name}} ({{prio .Priority}})</option>{{end}}</select></label>
+        <label>Note <input type="text" name="note" value="{{$s.Note}}"></label>
+      </div>
+      <div class="checks" style="margin-top:10px">
+        <label><input type="checkbox" name="enabled" {{if $s.Enabled}}checked{{end}}> enabled</label>
+        {{if ne $s.Kind "repo"}}
+        <label><input type="checkbox" name="repos" {{if $s.WithRepos}}checked{{end}}> own repos</label>
+        {{if .Features.Stars}}<label><input type="checkbox" name="stars" {{if $s.WithStars}}checked{{end}}> stars</label>{{end}}
+        <label><input type="checkbox" name="forks" {{if $s.WithForks}}checked{{end}}> their forks</label>
+        {{if .Features.Gists}}<label {{if .Features.GistsNeedToken}}title="GitLab lists only the token owner's snippets"{{end}}><input type="checkbox" name="gists" {{if $s.WithGists}}checked{{end}}> {{if .Features.GistsNeedToken}}snippets (token){{else}}gists{{end}}</label>{{end}}
+        {{end}}
+        <button class="primary">Save</button>
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Status</h2>
+    <dl class="kv">
+      <dt>last discovery</dt><dd>{{ago $s.LastDiscover}}</dd>
+      <dt>next discovery</dt><dd>{{if $s.Enabled}}{{until $s.NextDiscover}}{{else}}disabled{{end}}</dd>
+      <dt>repositories</dt><dd>{{.Total}}</dd>
+      {{if $s.LastError}}<dt>last error</dt><dd style="color:var(--bad)">{{$s.LastError}}</dd>{{end}}
+    </dl>
+    <form method="post" action="/sources/{{$s.ID}}/delete" style="margin-top:12px" onsubmit="return confirm('Stop watching {{$s.Target}}? Stored repositories are kept.')">
+      <button class="danger sm">Stop watching</button> <span class="help">Stored repositories stay in the backup.</span>
+    </form>
+  </div>
+</div>
+
+<div class="card flush" style="margin-top:16px">
+  <h2>Repositories <span class="desc small">sort: <a href="?sort=name">name</a> · <a href="?sort=hot">hot</a> · <a href="?sort=changed">changed</a> · <a href="?sort=versions">versions</a></span></h2>
+  {{template "repotable" .Repos}}
+</div>
+{{end}}
+

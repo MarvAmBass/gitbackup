@@ -1,0 +1,14 @@
+{{define "content"}}
+<div class="titlebar">
+  <h1>Events</h1>
+  <span class="spacer"></span>
+  <nav class="checks small">
+    <a href="/events" {{if eq .Kind ""}}style="font-weight:700"{{end}}>all</a>
+    <a href="/events?kind=history" {{if eq .Kind "history"}}style="font-weight:700"{{end}}>history changes</a>
+    <a href="/events?kind=releases" {{if eq .Kind "releases"}}style="font-weight:700"{{end}}>releases</a>
+    <a href="/events?kind=discovery" {{if eq .Kind "discovery"}}style="font-weight:700"{{end}}>discovery</a>
+    <a href="/events?kind=errors" {{if eq .Kind "errors"}}style="font-weight:700"{{end}}>errors</a>
+  </nav>
+</div>
+<div class="card flush">{{template "eventrows" .Events}}</div>
+{{end}}

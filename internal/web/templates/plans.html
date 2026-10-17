@@ -1,0 +1,54 @@
+{{define "content"}}
+<h1>Plans</h1>
+<p class="desc" style="margin-top:-8px">A plan sets how often a source is re-listed via the API (discovery) and how often each repo is checked via
+  <code>git ls-remote</code>, which costs no API quota. With <b>adaptive</b> on, each check that finds a change halves the repo's interval and each quiet check stretches it by 1.5×, within min and max.
+  A repo in several sources follows the strongest plan. Durations: <code>30m</code> <code>6h</code> <code>2d</code> <code>1w</code>. Saved to gitbackup.yaml.</p>
+
+{{range .Plans}}{{template "planform" (planCtx . $.Usage)}}{{end}}
+<h2 style="margin-top:24px">New plan</h2>
+{{template "planform" (planCtx .New nil)}}
+{{end}}
+
+{{define "planform"}}{{$p := .Plan}}
+<form class="card" method="post" action="/plans" style="margin-bottom:12px">
+  <input type="hidden" name="orig" value="{{$p.Name}}">
+  <div class="row">
+    <label>Name <input type="text" name="name" value="{{$p.Name}}" required style="width:130px"></label>
+    <label>Priority
+      <select name="priority">
+        <option value="high" {{if eq $p.Priority "high"}}selected{{end}}>high</option>
+        <option value="normal" {{if eq $p.Priority "normal"}}selected{{end}}>normal</option>
+        <option value="low" {{if eq $p.Priority "low"}}selected{{end}}>low</option>
+      </select></label>
+    <label>Discover every <input class="short" type="text" name="discover_every" value="{{$p.DiscoverEvery}}"></label>
+    <label>Check every <input class="short" type="text" name="check_every" value="{{$p.Check.Every}}"></label>
+    <label>min <input class="short" type="text" name="check_min" value="{{$p.Check.Min}}"></label>
+    <label>max <input class="short" type="text" name="check_max" value="{{$p.Check.Max}}"></label>
+    <div class="checks"><label><input type="checkbox" name="adaptive" {{if $p.Check.Adaptive}}checked{{end}}> adaptive</label></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label>Releases
+      <select name="releases">
+        <option value="off" {{if eq $p.Releases "off"}}selected{{end}}>off</option>
+        <option value="meta" {{if eq $p.Releases "meta"}}selected{{end}}>metadata</option>
+        <option value="assets" {{if eq $p.Releases "assets"}}selected{{end}}>metadata + files</option>
+      </select></label>
+    <label>sweep every <input class="short" type="text" name="releases_every" value="{{$p.ReleasesEvery}}" title="tag changes sync releases right away; this is the slow full sweep"></label>
+    <label>max file MB <input class="short" type="number" name="release_max_mb" value="{{$p.ReleaseMaxMB}}"></label>
+    <div class="checks"><label><input type="checkbox" name="wiki" {{if $p.Wiki}}checked{{end}}> wiki</label></div>
+    <label>Forks of repos
+      <select name="forks">
+        <option value="off" {{if not $p.Forks.Enabled}}selected{{end}}>off</option>
+        <option value="on" {{if $p.Forks.Enabled}}selected{{end}}>on</option>
+      </select></label>
+    <label>keep if ≥ own commits <input class="short" type="number" name="fork_min_ahead" value="{{$p.Forks.MinAhead}}"></label>
+    <label>max per repo <input class="short" type="number" name="fork_max" value="{{$p.Forks.Max}}"></label>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <span class="spacer" style="flex:1"></span>
+    <button class="primary">{{if $p.Name}}Save{{else}}Create{{end}}</button>
+    {{if $p.Name}}<span class="desc small">{{.Used}} source(s)</span>{{end}}
+  </div>
+</form>
+{{if and $p.Name (eq .Used 0)}}<form method="post" action="/plans/delete" style="margin:-6px 0 14px"><input type="hidden" name="name" value="{{$p.Name}}"><button class="sm danger">delete {{$p.Name}}</button></form>{{end}}
+{{end}}

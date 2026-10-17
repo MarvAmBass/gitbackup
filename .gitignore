@@ -1,0 +1,9 @@
+data/
+/gitbackup
+/gitbackup.yaml
+state/
+*.db
+*.db-*
+.env
+.DS_Store
+*.log

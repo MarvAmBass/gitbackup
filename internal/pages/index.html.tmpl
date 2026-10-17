@@ -1,0 +1,98 @@
+{{define "page"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · gitbackup</title>
+<link rel="icon" type="image/png" href="{{.Root}}favicon.png">
+<link rel="stylesheet" href="{{.Root}}style.css">
+</head>
+<body>
+<div class="gv-head">
+  <h1>{{if .Root}}<a href="{{.Root}}index.html">gitbackup</a> / {{end}}{{.Title}}</h1>
+  {{if not .Repo}}<span class="desc">{{.Total}} repositories · generated {{.Generated.Format "2006-01-02 15:04"}}{{if not .HTML}} · history pages off{{end}}</span>
+  <input id="q" type="search" placeholder="filter…" autofocus>{{end}}
+</div>
+{{if .Repo}}{{template "repo" .Repo}}{{else}}{{template "groups" .Groups}}{{end}}
+</body>
+</html>
+{{end}}
+
+{{define "groups"}}
+{{range .}}
+<div class="gv-group">
+  <h2>{{if .Link}}<a href="{{.Link}}">{{.Title}}</a>{{else}}{{.Title}}{{end}} <span class="desc">({{len .Repos}})</span></h2>
+  <table class="gv-table">
+  {{range .Repos}}{{template "row" .}}{{end}}
+  </table>
+</div>
+{{end}}
+<script>
+document.getElementById('q').addEventListener('input', function (e) {
+  var q = e.target.value.toLowerCase();
+  document.querySelectorAll('.gv-group').forEach(function (g) {
+    var shown = 0;
+    g.querySelectorAll('tr[data-q]').forEach(function (tr) {
+      var hit = tr.dataset.q.toLowerCase().indexOf(q) >= 0;
+      tr.style.display = hit ? '' : 'none';
+      if (hit) shown++;
+    });
+    g.style.display = shown ? '' : 'none';
+  });
+});
+</script>
+{{end}}
+
+{{define "row"}}
+<tr data-q="{{.FullName}} {{.Description}}">
+  <td class="name"><a href="{{.Link}}">{{.FullName}}</a>
+    {{if eq .Kind "fork"}}<span class="badge">fork{{if .Ahead}} +{{.Ahead}}{{end}}</span>{{end}}
+    {{if eq .Kind "gist"}}<span class="badge">gist</span>{{end}}{{if eq .Kind "snippet"}}<span class="badge">snippet</span>{{end}}
+    {{if gt .Versions 0}}<span class="badge" title="history rewritten upstream; old states kept">{{.Versions}} version{{if gt .Versions 1}}s{{end}}</span>{{end}}
+    {{if eq .State "gone"}}<span class="badge gone" title="kept in the backup">no longer upstream{{if .GoneSince}} since {{day .GoneSince}}{{end}}</span>{{end}}
+    {{if .Archived}}<span class="badge">archived</span>{{end}}
+  </td>
+  <td class="desc">{{.Description}}</td>
+  <td class="when">{{day .LastCommit}}</td>
+</tr>
+{{end}}
+
+{{define "repo"}}
+<p class="desc">{{.Description}}</p>
+<table class="gv-table">
+  <tr><td class="name">upstream</td><td><a href="{{.URL}}">{{.URL}}</a>
+    {{if eq .State "gone"}}<span class="badge gone">no longer upstream{{if .GoneSince}} since {{day .GoneSince}}{{end}} – kept here</span>{{end}}</td></tr>
+  {{if .Parent}}<tr><td class="name">fork of</td><td><a href="{{.Parent.Link}}">{{.Parent.FullName}}</a>{{if .Ahead}} · {{.Ahead}} own commit(s) when found{{end}}</td></tr>{{end}}
+  <tr><td class="name">current</td><td>{{if .HasHTML}}<a href="html/log.html">history</a> · <a href="html/files.html">files</a> · <a href="html/refs.html">branches &amp; tags</a> · {{end}}<code>{{gitdir .Repo "repo" 0}}</code>{{if .LastCommit}} <span class="desc">last commit {{day .LastCommit}}</span>{{end}}</td></tr>
+</table>
+
+{{if .Versions}}
+<div class="gv-group">
+  <h2>Preserved versions <span class="desc">– states upstream rewrote, moved or deleted</span></h2>
+  <table class="gv-table">
+  {{range .Versions}}<tr>
+    <td class="name">v{{.N}}</td>
+    <td>{{if .HTML}}<a href="html.v{{.N}}/log.html">history</a> · <a href="html.v{{.N}}/files.html">files</a> · {{end}}<code>{{gitdir $.Repo "repo" .N}}</code></td>
+    <td class="desc">{{.Description}}</td>
+  </tr>{{end}}
+  </table>
+</div>
+{{end}}
+
+{{if or .HasWiki .HasReleases}}
+<div class="gv-group">
+  <h2>More</h2>
+  <table class="gv-table">
+    {{if .HasWiki}}<tr><td class="name">wiki</td><td><code>wiki.git</code>{{range .WikiVersions}} · <code>{{gitdir $.Repo "wiki" .}}</code>{{end}}</td></tr>{{end}}
+    {{if .HasReleases}}<tr><td class="name">releases</td><td><a href="releases/">releases/</a> <span class="desc">– release.json and files per tag; replaced files in .versions/</span></td></tr>{{end}}
+  </table>
+</div>
+{{end}}
+
+{{if .Forks}}
+<div class="gv-group">
+  <h2>Forks <span class="desc">({{len .Forks}}) – with own commits</span></h2>
+  <table class="gv-table">{{range .Forks}}{{template "row" .}}{{end}}</table>
+</div>
+{{end}}
+{{end}}

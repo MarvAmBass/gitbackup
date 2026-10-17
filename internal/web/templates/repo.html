@@ -1,0 +1,123 @@
+{{define "content"}}
+{{$r := .Repo}}
+<div class="titlebar">
+  <h1>{{$r.FullName}}</h1>
+  {{if eq $r.State "gone"}}<span class="badge b-bad">{{goneLabel $r}}{{if $r.GoneSince}} · since {{date $r.GoneSince}}{{end}} – kept</span>{{else}}<span class="badge {{if eq $r.State "ok"}}b-ok{{else if eq $r.State "error"}}b-bad{{end}}">{{$r.State}}</span>{{end}}
+  {{if eq $r.Kind "fork"}}<span class="badge">fork{{if $r.Ahead}} +{{$r.Ahead}}{{end}}</span>{{end}}
+  {{if eq $r.Kind "gist"}}<span class="badge">gist</span>{{end}}{{if eq $r.Kind "snippet"}}<span class="badge">snippet</span>{{end}}
+  {{if $r.Archived}}<span class="badge">archived</span>{{end}}
+  {{if $r.Paused}}<span class="badge">paused</span>{{end}}
+  {{if $r.Versions}}<span class="badge b-warn">{{$r.Versions}} preserved version{{if gt $r.Versions 1}}s{{end}}</span>{{end}}
+  <span class="spacer"></span>
+  {{if $r.LastCommit}}<a class="btn" href="{{browse $r}}" target="_blank">Browse folder ↗</a>{{end}}
+  <form class="inline" method="post" action="/repos/{{$r.ID}}/check"><button class="primary">Check now</button></form>
+</div>
+{{if $r.Description}}<p class="desc" style="margin-top:-8px">{{$r.Description}}</p>{{end}}
+{{if $r.LastError}}<div class="flash err">{{$r.LastError}}</div>{{end}}
+
+<div class="grid g2">
+  <div class="card">
+    <h2>Details</h2>
+    <dl class="kv">
+      <dt>platform</dt><dd>{{platformLabel $r.Platform}} · {{$r.Host}}</dd>
+      <dt>upstream</dt><dd><a href="{{$r.URL}}" rel="noreferrer" target="_blank" class="mono">{{$r.URL}}</a></dd>
+      <dt>folder</dt><dd class="mono">{{.AbsPath}}/</dd>
+      {{if .Parent}}<dt>fork of</dt><dd><a href="/repos/{{.Parent.ID}}">{{.Parent.FullName}}</a>{{if $r.Ahead}} <span class="desc">· {{$r.Ahead}} own commit(s) when found</span>{{end}}</dd>{{end}}
+      {{if .Aliases}}<dt>also linked at</dt><dd class="mono small">{{range .Aliases}}{{.}}<br>{{end}}</dd>{{end}}
+      {{if and .Features.Wiki (ne $r.Kind "gist") (ne $r.Kind "snippet")}}<dt>wiki</dt><dd>{{if eq $r.WikiState "ok"}}<span class="badge b-ok">mirrored</span>{{else if eq $r.WikiState "gone"}}<span class="badge b-bad">removed upstream – kept</span>{{else if eq $r.WikiState "none"}}<span class="desc">none upstream</span>{{else}}<span class="desc">not checked yet</span>{{end}}{{if $r.WikiVersions}} <span class="badge b-warn">{{$r.WikiVersions}} version(s)</span>{{end}}</dd>{{end}}
+      <dt>default branch</dt><dd class="mono">{{or $r.DefaultBranch "–"}}</dd>
+      <dt>last commit</dt><dd>{{if $r.LastCommit}}{{date $r.LastCommit}}{{else}}–{{end}}</dd>
+      <dt>last check</dt><dd>{{ago $r.LastCheck}}</dd>
+      <dt>last change</dt><dd>{{ago $r.LastChange}} <span class="desc">· {{$r.Changes30d}} change(s) in 30 days</span></dd>
+      <dt>next check</dt><dd>{{if $r.Paused}}paused{{else}}{{until $r.NextCheck}}{{end}} <span class="desc">· interval {{if $r.Interval}}{{dur $r.Interval}}{{else}}–{{end}}</span></dd>
+      <dt>size</dt><dd>{{bytes $r.SizeBytes}}</dd>
+      <dt>plan</dt><dd>{{or $r.PlanName "–"}} <span class="badge p{{$r.Priority}}">{{prio $r.Priority}}</span></dd>
+      <dt>watched via</dt><dd>{{range .Links}}<a href="/sources/{{.Source.ID}}">{{.Source.Target}}</a> <span class="desc small">({{.Role}})</span><br>{{else}}<span class="desc">no source any more – kept in the backup</span>{{end}}</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>Overrides</h2>
+    <form method="post" action="/repos/{{$r.ID}}/overrides">
+      <div class="row">
+        <label>Priority
+          <select name="priority">
+            <option value="" {{if not $r.PriorityOverride.Valid}}selected{{end}}>from plan</option>
+            <option value="high" {{if and $r.PriorityOverride.Valid (eq $r.PriorityOverride.Int64 2)}}selected{{end}}>high</option>
+            <option value="normal" {{if and $r.PriorityOverride.Valid (eq $r.PriorityOverride.Int64 1)}}selected{{end}}>normal</option>
+            <option value="low" {{if and $r.PriorityOverride.Valid (eq $r.PriorityOverride.Int64 0)}}selected{{end}}>low</option>
+          </select>
+        </label>
+        <label>Fixed interval <input class="short" type="text" name="interval" placeholder="adaptive" value="{{if $r.IntervalOverride.Valid}}{{durin $r.IntervalOverride.Int64}}{{end}}"></label>
+        <div class="checks"><label><input type="checkbox" name="paused" {{if $r.Paused}}checked{{end}}> paused</label></div>
+        <button>Save</button>
+      </div>
+      <p class="help">Interval like <code>30m</code>, <code>6h</code>, <code>2d</code>. Leave empty for the plan's adaptive schedule. Saved to gitbackup.yaml (overrides).</p>
+    </form>
+    <h3>Recent commits</h3>
+    <ul class="plain small">{{range .Recent}}<li><code>{{short .SHA}}</code> {{.Subject}} <span class="desc">– {{.Author}}, {{time .Time}}</span></li>{{else}}<li class="desc">Not cloned yet.</li>{{end}}</ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h2>Preserved versions</h2>
+  {{if .Versions}}
+  <p class="help" style="margin:0 0 10px">Each version is the complete repository as it was before upstream rewrote, moved or deleted something –
+    a normal git repository you can clone, next to the current one. Versions never change and are never pruned.</p>
+  {{range .Versions}}
+  <details {{if .Only}}open{{end}} style="margin-bottom:10px">
+    <summary><b>v{{.N}}</b> <span class="mono desc">{{.Stamp}}</span> <span class="desc">· {{len .Refs}} ref(s){{if .Only}} · {{len .Only}} commit(s) that exist only here{{end}}</span></summary>
+    <p class="small" style="margin:6px 0"><a href="{{versionURL $r .N}}" target="_blank">browse v{{.N}} ↗</a> ·
+      <code>git clone {{gitDir $.DataDir $r "repo" .N}}</code></p>
+    <div class="scroll"><table class="t small">
+      <thead><tr><th>ref</th><th>tip then</th></tr></thead>
+      <tbody>{{range $ref, $sha := .Refs}}<tr><td class="mono">{{$ref}}</td><td class="mono">{{short $sha}}</td></tr>{{end}}</tbody>
+    </table></div>
+    {{if .Only}}<h3>commits dropped upstream</h3>
+    <ul class="plain small">{{range .Only}}<li><code>{{short .SHA}}</code> {{.Subject}} <span class="desc">– {{.Author}}, {{time .Time}}</span></li>{{end}}</ul>{{end}}
+  </details>
+  {{end}}
+  {{else}}<p class="desc">No history rewrite seen so far.</p>{{end}}
+</div>
+
+{{if .Forks}}
+<div class="card flush" style="margin-top:16px">
+  <h2>Forks with own commits <span class="desc small">stored in {{$r.Path}}/forks/</span></h2>
+  {{template "repotable" .Forks}}
+</div>
+{{end}}
+
+{{if .Features.Releases}}
+<div class="card" style="margin-top:16px">
+  <div class="titlebar" style="margin-bottom:8px">
+    <h2 style="margin:0">Releases</h2>
+    <span class="desc small">{{.ReleaseSummary.Releases}} release(s) · {{.ReleaseSummary.Assets}} file(s) · {{bytes .ReleaseSummary.Bytes}}{{if $r.ReleasesChecked}} · synced {{ago $r.ReleasesChecked}}{{end}}</span>
+    <span class="spacer"></span>
+    <form class="inline" method="post" action="/repos/{{$r.ID}}/releases"><button class="sm">Sync releases now</button></form>
+  </div>
+  {{if .Releases}}
+  {{range .Releases}}
+  <details style="margin-bottom:8px" {{if eq .State "deleted"}}open{{end}}>
+    <summary><b class="mono">{{.Tag}}</b> {{if ne .Name .Tag}}{{.Name}}{{end}}
+      {{if .Prerelease}}<span class="badge">pre-release</span>{{end}}
+      {{if eq .State "deleted"}}<span class="badge b-bad">deleted upstream – kept</span>{{end}}
+      <span class="desc small">· {{if .Published}}{{date .Published}}{{end}} · {{len .Assets}} file(s)</span></summary>
+    <div class="scroll"><table class="t small">
+      <tbody>{{range .Assets}}<tr>
+        <td class="mono">{{if .Path}}<a href="/browse/{{.Path}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}</td>
+        <td class="num">{{if .Size}}{{bytes .Size}}{{end}}</td>
+        <td><span class="badge {{if eq .State "ok"}}b-ok{{else if or (eq .State "replaced") (eq .State "deleted")}}b-warn{{else if eq .State "failed"}}b-bad{{end}}">{{.State}}</span> <span class="desc">{{.Note}}</span></td>
+        <td class="mono desc">{{if .SHA256}}sha256 {{short .SHA256}}{{end}}</td>
+      </tr>{{else}}<tr><td class="desc">no files</td></tr>{{end}}</tbody>
+    </table></div>
+    <p class="help"><a href="{{releaseDir $r .Tag}}/release.json">release.json</a></p>
+  </details>
+  {{end}}
+  {{else}}<p class="desc">None stored{{if eq $r.PlanName ""}}.{{else}} – releases are {{if eq (planReleases $.Plans $r.PlanID) "off"}}<b>off</b> in plan “{{$r.PlanName}}”{{else}}checked with the next change or discovery interval{{end}}.{{end}}</p>{{end}}
+</div>
+{{end}}
+
+<div class="card flush" style="margin-top:16px">
+  <h2>Timeline</h2>
+  {{template "eventrows" .Events}}
+</div>
+{{end}}

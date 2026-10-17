@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · gitbackup</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232458c6'/><path d='M4 5h8v7H4z' fill='none' stroke='white' stroke-width='1.5'/><path d='M6 5V3.5h4V5' fill='none' stroke='white' stroke-width='1.5'/></svg>">
+</head>
+<body>
+<header class="top"><div class="in">
+  <a class="brand" href="/">git<span>backup</span></a>
+  <nav>
+    <a href="/" {{if eq .Nav "dashboard"}}class="on"{{end}}>Dashboard</a>
+    <a href="/sources" {{if or (eq .Nav "sources") (eq .Nav "source")}}class="on"{{end}}>Sources</a>
+    <a href="/repos" {{if or (eq .Nav "repos") (eq .Nav "repo")}}class="on"{{end}}>Repositories</a>
+    <a href="/events" {{if eq .Nav "events"}}class="on"{{end}}>Events</a>
+    <a href="/plans" {{if eq .Nav "plans"}}class="on"{{end}}>Plans</a>
+    <a href="/settings" {{if eq .Nav "settings"}}class="on"{{end}}>Settings</a>
+  </nav>
+  <span class="spacer"></span>
+  <nav><a href="/browse/" target="_blank">Browse&nbsp;HTML&nbsp;↗</a></nav>
+  {{if .LoggedIn}}<form method="post" action="/logout" style="margin-left:6px"><button class="sm" title="sign out">Sign out</button></form>{{end}}
+</div></header>
+<main>
+{{if .ConfigError}}<div class="flash err"><b>gitbackup.yaml has an error and was not applied</b> – running with the last good version: {{.ConfigError}}</div>{{end}}
+{{if .Paused}}<div class="flash err">Git checks are <b>paused</b> (Settings) – discovery still runs.</div>{{end}}
+{{if .Flash}}<div class="flash ok">{{.Flash}}</div>{{end}}
+{{if .Error}}<div class="flash err">{{.Error}}</div>{{end}}
+{{template "content" .Data}}
+</main>
+<footer>gitbackup {{.Version}}</footer>
+</body>
+</html>

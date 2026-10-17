@@ -1,0 +1,54 @@
+{{define "content"}}
+<h1>Sources</h1>
+<div class="card" style="margin-bottom:16px">
+  <h2>Watch something new</h2>
+  <form method="post" action="/sources">
+    <div class="row">
+      <label>User, org, group or repository – name or URL
+        <input class="wide" type="text" name="target" required placeholder="octocat · pi-hole/pi-hole · https://gitlab.com/group · ~sircmpwn · git@host:a/b.git">
+      </label>
+      <label>Platform
+        <select name="platform">
+          <option value="">auto-detect</option>
+          {{range .Platforms}}<option value="{{.}}">{{.Label}}</option>{{end}}
+        </select>
+      </label>
+      <label>Plan
+        <select name="plan">{{range .Plans}}<option value="{{.Name}}" {{if eq .Name "default"}}selected{{end}}>{{.Name}} ({{prio .Priority}})</option>{{end}}</select>
+      </label>
+      <label>Note <input type="text" name="note" placeholder="optional"></label>
+    </div>
+    <div class="checks" style="margin-top:10px">
+      <span class="desc small">For accounts:</span>
+      <label><input type="checkbox" name="repos" checked> own repos</label>
+      <label title="GitHub, GitLab, Gitea/Forgejo"><input type="checkbox" name="stars"> stars</label>
+      <label><input type="checkbox" name="forks"> their forks</label>
+      <label title="GitHub gists; GitLab snippets of the token owner"><input type="checkbox" name="gists"> gists / snippets</label>
+      <span class="spacer"></span>
+      <button class="primary">Add source</button>
+    </div>
+  </form>
+  <p class="help">A bare name goes to GitHub, or to the platform you pick (GitLab → gitlab.com, Gitea/Forgejo → codeberg.org, sourcehut → git.sr.ht).
+    For a URL on an unknown server, gitbackup asks the server what it runs. Pick <b>plain git</b> for a single repository without a forge around it.</p>
+</div>
+
+<div class="card flush"><div class="scroll">
+<table class="t">
+  <thead><tr><th>source</th><th>where</th><th>plan</th><th class="num">repos</th><th class="num">stars</th><th>last discovery</th><th>next</th><th></th></tr></thead>
+  <tbody>
+  {{range .Sources}}<tr>
+    <td><a href="/sources/{{.ID}}"><b>{{.Target}}</b></a>{{if not .Enabled}} <span class="badge">disabled</span>{{end}}
+      {{if .Note}}<div class="desc small">{{.Note}}</div>{{end}}
+      {{if .LastError}}<div class="small" style="color:var(--bad)">{{.LastError}}</div>{{end}}</td>
+    <td class="nw desc">{{platformLabel .Platform}} · {{.Host}}<div class="small">{{.Kind}}{{if .AccountType}} · {{.AccountType}}{{end}}</div></td>
+    <td>{{.PlanName}}</td>
+    <td class="num">{{.Repos}}</td>
+    <td class="num">{{if .WithStars}}{{.Stars}}{{else}}–{{end}}</td>
+    <td class="nw desc">{{ago .LastDiscover}}</td>
+    <td class="nw desc">{{if .Enabled}}{{until .NextDiscover}}{{else}}–{{end}}</td>
+    <td class="nw"><form class="inline" method="post" action="/sources/{{.ID}}/discover"><button class="sm">discover now</button></form></td>
+  </tr>{{else}}<tr><td colspan="8" class="empty">Nothing watched yet.</td></tr>{{end}}
+  </tbody>
+</table>
+</div></div>
+{{end}}

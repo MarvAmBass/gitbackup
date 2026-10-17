@@ -1,0 +1,28 @@
+# gitbackup – everything lives in one folder:
+#   gitbackup.yaml   configuration (web UI + hand edits)
+#   state/           database (schedule, events, API cache) – rebuildable
+#   data/            repositories, versions, wikis, releases, HTML – served at /browse/
+#
+# Put the password in a .env file next to this one (never commit it):
+#   GITBACKUP_ADMIN_PASSWORD=choose-a-long-password
+services:
+  gitbackup:
+    build: .   # pulls streagit (github.com/MarvAmBass/streagit) at the pinned release
+    image: gitbackup:latest
+    restart: unless-stopped
+    ports:
+      # HTTP – and HTTPS on the same port when enabled in Settings. Reachable
+      # from this machine only. To expose it on the LAN, use "8080:8080" – and
+      # turn on HTTPS (Settings) or put a TLS reverse proxy in front.
+      - "127.0.0.1:8080:8080"
+      # - "127.0.0.1:8443:8443"    # only if HTTPS is set to a separate port
+    volumes:
+      - ./gitbackup:/data
+    environment:
+      # Login for the UI – required. Anyone with UI access can add shell hooks.
+      GITBACKUP_ADMIN_USER: admin
+      GITBACKUP_ADMIN_PASSWORD: ${GITBACKUP_ADMIN_PASSWORD:?set GITBACKUP_ADMIN_PASSWORD (e.g. in .env)}
+      # Tokens referenced from gitbackup.yaml as ${GITHUB_TOKEN} etc. (optional).
+      # GITHUB_TOKEN: ${GITHUB_TOKEN}
+      # Optional: absolute URL of /browse/ for atom feeds.
+      # GITBACKUP_BROWSE_URL: https://gitbackup.example.org:8080/browse
