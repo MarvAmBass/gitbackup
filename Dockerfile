@@ -2,7 +2,7 @@
 
 # ---- streagit: on-demand page renderer (Rust, static musl), pinned release
 FROM rust:alpine AS streagit
-ARG STREAGIT_REF=v0.1.2
+ARG STREAGIT_REF=v0.1.3
 RUN apk add --no-cache musl-dev
 ADD https://github.com/MarvAmBass/streagit.git#${STREAGIT_REF} /src
 WORKDIR /src
